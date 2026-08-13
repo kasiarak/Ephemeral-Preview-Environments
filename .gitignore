@@ -1,0 +1,51 @@
+# ── Terraform ────────────────────────────────────────────────────────────────
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# .terraform.lock.hcl is deliberately NOT ignored - provider locks are committed
+# so that CI and local runs resolve identical provider versions.
+
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# dev/prod tfvars are committed - they hold no secrets. Only local and
+# sensitive ones are ignored.
+*.auto.tfvars
+*.auto.tfvars.json
+secrets.tfvars
+secrets.tfvars.json
+
+# ── LocalStack ───────────────────────────────────────────────────────────────
+volume/
+.localstack/
+
+# ── Build artifacts (Lambda packages) ────────────────────────────────────────
+*.zip
+.build/
+
+# ── Environment variables ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# ── System / editors ─────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
