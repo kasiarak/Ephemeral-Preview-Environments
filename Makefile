@@ -9,7 +9,7 @@ AWS_SECRET_ACCESS_KEY ?= test
 AWS_DEFAULT_REGION ?= us-east-1
 export AWS_ENDPOINT_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
 
-.PHONY: help up down logs health test fmt bootstrap nuke
+.PHONY: help up down logs health test fmt bootstrap shared nuke
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -36,6 +36,10 @@ fmt: ## Format Terraform files
 bootstrap: ## Create the S3 bucket and DynamoDB table holding Terraform state
 	terraform -chdir=terraform/bootstrap init -input=false
 	terraform -chdir=terraform/bootstrap apply -auto-approve -input=false
+
+shared: ## Create long-lived resources shared by every environment
+	terraform -chdir=terraform/shared init -input=false
+	terraform -chdir=terraform/shared apply -auto-approve -input=false
 
 nuke: ## Stop LocalStack and delete all emulated state
 	docker compose down --remove-orphans
