@@ -9,7 +9,10 @@ AWS_SECRET_ACCESS_KEY ?= test
 AWS_DEFAULT_REGION ?= us-east-1
 export AWS_ENDPOINT_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
 
-.PHONY: help up down logs health test fmt bootstrap shared nuke
+PREVIEW_DIR := terraform/envs/preview
+COMMIT ?= unknown
+
+.PHONY: help up down logs health test fmt bootstrap shared env-up env-down env-url env-list nuke
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -40,6 +43,33 @@ bootstrap: ## Create the S3 bucket and DynamoDB table holding Terraform state
 shared: ## Create long-lived resources shared by every environment
 	terraform -chdir=terraform/shared init -input=false
 	terraform -chdir=terraform/shared apply -auto-approve -input=false
+
+env-up: ## Create or update the preview environment for PR=<n>
+	@test -n "$(PR)" || { echo "usage: make env-up PR=<number> [COMMIT=<sha>]"; exit 1; }
+	terraform -chdir=$(PREVIEW_DIR) init -input=false
+	terraform -chdir=$(PREVIEW_DIR) workspace select -or-create pr-$(PR)
+	terraform -chdir=$(PREVIEW_DIR) apply -auto-approve -input=false \
+		-var pr_number=$(PR) -var commit_sha=$(COMMIT)
+
+env-down: ## Destroy the preview environment for PR=<n>
+	@test -n "$(PR)" || { echo "usage: make env-down PR=<number>"; exit 1; }
+	@terraform -chdir=$(PREVIEW_DIR) init -input=false >/dev/null
+	@if terraform -chdir=$(PREVIEW_DIR) workspace select pr-$(PR) >/dev/null 2>&1; then \
+		terraform -chdir=$(PREVIEW_DIR) destroy -auto-approve -input=false -var pr_number=$(PR); \
+		terraform -chdir=$(PREVIEW_DIR) workspace select default >/dev/null; \
+		terraform -chdir=$(PREVIEW_DIR) workspace delete pr-$(PR); \
+	else \
+		echo "environment pr-$(PR) does not exist"; \
+	fi
+
+env-url: ## Print the URLs of the preview environment for PR=<n>
+	@test -n "$(PR)" || { echo "usage: make env-url PR=<number>"; exit 1; }
+	@terraform -chdir=$(PREVIEW_DIR) workspace select pr-$(PR) >/dev/null
+	@echo "api:  $$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url | sed 's/:4566/:$(LOCALSTACK_PORT)/')"
+	@echo "site: http://$$(terraform -chdir=$(PREVIEW_DIR) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)"
+
+env-list: ## List live preview environments
+	@terraform -chdir=$(PREVIEW_DIR) workspace list
 
 nuke: ## Stop LocalStack and delete all emulated state
 	docker compose down --remove-orphans
