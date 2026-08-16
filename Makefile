@@ -89,7 +89,8 @@ env-url: ## Print the URLs of the preview environment for PR=<n>
 	@echo "site: http://$$(terraform -chdir=$(PREVIEW_DIR) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)"
 
 env-list: ## List live preview environments
-	@terraform -chdir=$(PREVIEW_DIR) workspace list
+	@terraform -chdir=$(PREVIEW_DIR) workspace list \
+		| sed 's/^[* ] *//' | grep '^pr-' || echo "no preview environments"
 
 nuke: ## Stop LocalStack and delete all emulated state
 	docker compose down --remove-orphans
