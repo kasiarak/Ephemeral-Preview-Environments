@@ -70,6 +70,7 @@ env-up: ## Create or update the preview environment for PR=<n>
 	terraform -chdir=$(PREVIEW_DIR) workspace select -or-create pr-$(PR)
 	terraform -chdir=$(PREVIEW_DIR) apply -auto-approve -input=false \
 		-var pr_number=$(PR) -var commit_sha=$(COMMIT)
+	@$(MAKE) --no-print-directory env-url PR=$(PR)
 
 env-down: ## Destroy the preview environment for PR=<n>
 	@test -n "$(PR)" || { echo "usage: make env-down PR=<number>"; exit 1; }
