@@ -11,8 +11,9 @@ export AWS_ENDPOINT_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGI
 
 PREVIEW_DIR := terraform/envs/preview
 COMMIT ?= unknown
+TTL_HOURS ?= 24
 
-.PHONY: help up down logs health test-unit test smoke fmt validate bootstrap shared env-up env-down env-url env-list nuke
+.PHONY: help up down logs health test-unit test smoke fmt validate bootstrap shared env-up env-down env-url env-list reap reap-force nuke
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -91,6 +92,12 @@ env-url: ## Print the URLs of the preview environment for PR=<n>
 env-list: ## List live preview environments
 	@terraform -chdir=$(PREVIEW_DIR) workspace list \
 		| sed 's/^[* ] *//' | grep '^pr-' || echo "no preview environments"
+
+reap: ## Show which preview environments are stale
+	@PREVIEW_DIR=$(PREVIEW_DIR) TTL_HOURS=$(TTL_HOURS) ./scripts/reap.sh
+
+reap-force: ## Destroy stale preview environments
+	@PREVIEW_DIR=$(PREVIEW_DIR) TTL_HOURS=$(TTL_HOURS) FORCE=1 ./scripts/reap.sh
 
 nuke: ## Stop LocalStack and delete all emulated state
 	docker compose down --remove-orphans
