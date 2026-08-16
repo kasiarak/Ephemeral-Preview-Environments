@@ -40,7 +40,7 @@ test: test-unit ## Run unit tests and Terraform tests
 smoke: ## Run HTTP smoke tests against the environment for PR=<n>
 	@test -n "$(PR)" || { echo "usage: make smoke PR=<number> [COMMIT=<sha>]"; exit 1; }
 	@terraform -chdir=$(PREVIEW_DIR) workspace select pr-$(PR) >/dev/null
-	@API_URL="$$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url | sed 's/:4566/:$(LOCALSTACK_PORT)/')" \
+	@API_URL="$$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url)" \
 		SITE_URL="http://$$(terraform -chdir=$(PREVIEW_DIR) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)" \
 		PR_NUMBER="$(PR)" COMMIT_SHA="$(COMMIT)" \
 		./scripts/smoke.sh
@@ -69,7 +69,7 @@ env-up: ## Create or update the preview environment for PR=<n>
 	terraform -chdir=$(PREVIEW_DIR) init -input=false
 	terraform -chdir=$(PREVIEW_DIR) workspace select -or-create pr-$(PR)
 	terraform -chdir=$(PREVIEW_DIR) apply -auto-approve -input=false \
-		-var pr_number=$(PR) -var commit_sha=$(COMMIT)
+		-var pr_number=$(PR) -var commit_sha=$(COMMIT) -var public_port=$(LOCALSTACK_PORT)
 	@$(MAKE) --no-print-directory env-url PR=$(PR)
 
 env-down: ## Destroy the preview environment for PR=<n>
@@ -86,7 +86,7 @@ env-down: ## Destroy the preview environment for PR=<n>
 env-url: ## Print the URLs of the preview environment for PR=<n>
 	@test -n "$(PR)" || { echo "usage: make env-url PR=<number>"; exit 1; }
 	@terraform -chdir=$(PREVIEW_DIR) workspace select pr-$(PR) >/dev/null
-	@echo "api:  $$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url | sed 's/:4566/:$(LOCALSTACK_PORT)/')"
+	@echo "api:  $$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url)"
 	@echo "site: http://$$(terraform -chdir=$(PREVIEW_DIR) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)"
 
 env-list: ## List live preview environments

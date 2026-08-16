@@ -1,5 +1,5 @@
 output "api_url" {
-  value = module.api.api_url
+  value = local.api_url
 }
 
 output "function_name" {

@@ -1,3 +1,7 @@
+locals {
+  api_url = replace(module.api.api_url, "/:[0-9]+$/", ":${var.public_port}")
+}
+
 module "api" {
   source            = "../lambda-api"
   name_prefix       = var.env_name
@@ -17,7 +21,7 @@ module "site" {
     env_name   = var.env_name
     pr_number  = var.pr_number
     commit_sha = var.commit_sha
-    api_url    = module.api.api_url
+    api_url    = local.api_url
   }
 }
 

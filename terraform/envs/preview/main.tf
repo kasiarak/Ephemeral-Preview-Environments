@@ -32,4 +32,5 @@ module "preview" {
   web_template_path = "${path.module}/../../../app/web/index.html.tftpl"
   alarm_topic_arn   = data.terraform_remote_state.shared.outputs.alarm_topic_arn
   retention_in_days = var.retention_in_days
+  public_port       = var.public_port
 }

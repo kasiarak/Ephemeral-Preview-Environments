@@ -21,3 +21,8 @@ variable "retention_in_days" {
   type    = number
   default = 3
 }
+
+variable "public_port" {
+  type    = number
+  default = 4566
+}
