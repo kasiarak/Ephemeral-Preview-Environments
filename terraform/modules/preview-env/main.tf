@@ -10,6 +10,7 @@ module "api" {
   pr_number         = var.pr_number
   commit_sha        = var.commit_sha
   retention_in_days = var.retention_in_days
+  memory_size       = var.memory_size
 }
 
 module "site" {
