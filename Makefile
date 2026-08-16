@@ -12,7 +12,7 @@ export AWS_ENDPOINT_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGI
 PREVIEW_DIR := terraform/envs/preview
 COMMIT ?= unknown
 
-.PHONY: help up down logs health test fmt bootstrap shared env-up env-down env-url env-list nuke
+.PHONY: help up down logs health test smoke fmt bootstrap shared env-up env-down env-url env-list nuke
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -30,8 +30,18 @@ logs: ## Follow LocalStack logs
 health: ## Print the LocalStack health payload
 	@curl -fsS $(LOCALSTACK_ENDPOINT)/_localstack/health | jq .
 
-test: ## Run application unit tests
+test: ## Run application unit tests and Terraform tests
 	python3 -m unittest discover app/api
+	terraform -chdir=$(PREVIEW_DIR) init -input=false
+	terraform -chdir=$(PREVIEW_DIR) test
+
+smoke: ## Run HTTP smoke tests against the environment for PR=<n>
+	@test -n "$(PR)" || { echo "usage: make smoke PR=<number> [COMMIT=<sha>]"; exit 1; }
+	@terraform -chdir=$(PREVIEW_DIR) workspace select pr-$(PR) >/dev/null
+	@API_URL="$$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url | sed 's/:4566/:$(LOCALSTACK_PORT)/')" \
+		SITE_URL="http://$$(terraform -chdir=$(PREVIEW_DIR) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)" \
+		PR_NUMBER="$(PR)" COMMIT_SHA="$(COMMIT)" \
+		./scripts/smoke.sh
 
 fmt: ## Format Terraform files
 	terraform fmt -recursive terraform
