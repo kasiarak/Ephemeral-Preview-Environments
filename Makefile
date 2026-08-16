@@ -13,7 +13,7 @@ PREVIEW_DIR := terraform/envs/preview
 COMMIT ?= unknown
 TTL_HOURS ?= 24
 
-.PHONY: help up down logs health test-unit test smoke fmt validate bootstrap shared env-up env-down env-url env-list reap reap-force nuke
+.PHONY: help up down logs health test-unit test smoke fmt validate bootstrap shared env-up env-down env-url env-logs env-list reap reap-force nuke
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -88,6 +88,10 @@ env-url: ## Print the URLs of the preview environment for PR=<n>
 	@terraform -chdir=$(PREVIEW_DIR) workspace select pr-$(PR) >/dev/null
 	@echo "api:  $$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url)"
 	@echo "site: http://$$(terraform -chdir=$(PREVIEW_DIR) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)"
+
+env-logs: ## Follow application logs of the environment for PR=<n>
+	@test -n "$(PR)" || { echo "usage: make env-logs PR=<number>"; exit 1; }
+	aws logs tail /aws/lambda/pr-$(PR)-api --since 10m --follow
 
 env-list: ## List live preview environments
 	@terraform -chdir=$(PREVIEW_DIR) workspace list \
