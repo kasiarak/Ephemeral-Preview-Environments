@@ -1,0 +1,56 @@
+name: preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      PR: ${{ github.event.number }}
+      COMMIT: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the pinned Terraform version
+        id: terraform-version
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
+          terraform_wrapper: false
+
+      - name: Start LocalStack
+        run: make up
+
+      - name: Create Terraform state backend
+        run: make bootstrap
+
+      - name: Create shared resources
+        run: make shared
+
+      - name: Create the preview environment
+        run: make env-up PR=$PR COMMIT=$COMMIT
+
+      - name: Show the environment URLs
+        run: make env-url PR=$PR
+
+      - name: Smoke test the preview environment
+        run: make smoke PR=$PR COMMIT=$COMMIT
+
+      - name: Destroy the preview environment
+        if: always()
+        run: make env-down PR=$PR
+
+      - name: LocalStack logs
+        if: failure()
+        run: docker compose logs --tail=200 localstack

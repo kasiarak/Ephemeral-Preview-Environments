@@ -7,7 +7,10 @@ crash.log
 crash.*.log
 
 # .terraform.lock.hcl is deliberately NOT ignored - provider locks are committed
-# so that CI and local runs resolve identical provider versions.
+# so that CI and local runs resolve identical provider versions. Child modules
+# are the exception: their lock files are a side effect of validating them and
+# are never consulted when the module is used.
+terraform/modules/*/.terraform.lock.hcl
 
 override.tf
 override.tf.json

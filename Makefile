@@ -12,7 +12,7 @@ export AWS_ENDPOINT_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGI
 PREVIEW_DIR := terraform/envs/preview
 COMMIT ?= unknown
 
-.PHONY: help up down logs health test smoke fmt bootstrap shared env-up env-down env-url env-list nuke
+.PHONY: help up down logs health test-unit test smoke fmt validate bootstrap shared env-up env-down env-url env-list nuke
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -30,8 +30,10 @@ logs: ## Follow LocalStack logs
 health: ## Print the LocalStack health payload
 	@curl -fsS $(LOCALSTACK_ENDPOINT)/_localstack/health | jq .
 
-test: ## Run application unit tests and Terraform tests
+test-unit: ## Run application unit tests
 	python3 -m unittest discover app/api
+
+test: test-unit ## Run unit tests and Terraform tests
 	terraform -chdir=$(PREVIEW_DIR) init -input=false
 	terraform -chdir=$(PREVIEW_DIR) test
 
@@ -45,6 +47,14 @@ smoke: ## Run HTTP smoke tests against the environment for PR=<n>
 
 fmt: ## Format Terraform files
 	terraform fmt -recursive terraform
+
+validate: ## Check formatting and validate every Terraform configuration
+	terraform fmt -check -recursive terraform
+	@for dir in $$(find terraform -name '*.tf' -exec dirname {} \; | sort -u); do \
+		echo "==> $$dir"; \
+		terraform -chdir="$$dir" init -backend=false -input=false >/dev/null || exit 1; \
+		terraform -chdir="$$dir" validate || exit 1; \
+	done
 
 bootstrap: ## Create the S3 bucket and DynamoDB table holding Terraform state
 	terraform -chdir=terraform/bootstrap init -input=false
