@@ -2,6 +2,10 @@ output "api_url" {
   value = module.preview.api_url
 }
 
+output "git_ref" {
+  value = var.git_ref
+}
+
 output "site_bucket" {
   value = module.preview.site_bucket
 }

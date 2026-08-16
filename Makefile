@@ -64,12 +64,10 @@ shared: ## Create long-lived resources shared by every environment
 	terraform -chdir=terraform/shared init -input=false
 	terraform -chdir=terraform/shared apply -auto-approve -input=false
 
-env-up: ## Create or update the preview environment for PR=<n>
-	@test -n "$(PR)" || { echo "usage: make env-up PR=<number> [COMMIT=<sha>]"; exit 1; }
-	terraform -chdir=$(PREVIEW_DIR) init -input=false
-	terraform -chdir=$(PREVIEW_DIR) workspace select -or-create pr-$(PR)
-	terraform -chdir=$(PREVIEW_DIR) apply -auto-approve -input=false \
-		-var pr_number=$(PR) -var commit_sha=$(COMMIT) -var public_port=$(LOCALSTACK_PORT)
+env-up: ## Create or update the preview environment for PR=<n> [REF=<branch>]
+	@test -n "$(PR)" || { echo "usage: make env-up PR=<number> [REF=<branch>] [COMMIT=<sha>]"; exit 1; }
+	@PR=$(PR) COMMIT=$(COMMIT) REF=$(REF) PREVIEW_DIR=$(PREVIEW_DIR) PUBLIC_PORT=$(LOCALSTACK_PORT) \
+		./scripts/env-up.sh
 	@$(MAKE) --no-print-directory env-url PR=$(PR)
 
 env-down: ## Destroy the preview environment for PR=<n>
@@ -79,6 +77,7 @@ env-down: ## Destroy the preview environment for PR=<n>
 		terraform -chdir=$(PREVIEW_DIR) destroy -auto-approve -input=false -var pr_number=$(PR); \
 		terraform -chdir=$(PREVIEW_DIR) workspace select default >/dev/null; \
 		terraform -chdir=$(PREVIEW_DIR) workspace delete pr-$(PR); \
+		git worktree remove --force .worktrees/pr-$(PR) 2>/dev/null || true; \
 	else \
 		echo "environment pr-$(PR) does not exist"; \
 	fi

@@ -26,3 +26,13 @@ variable "public_port" {
   type    = number
   default = 4566
 }
+
+variable "app_root" {
+  type    = string
+  default = ""
+}
+
+variable "git_ref" {
+  type    = string
+  default = ""
+}

@@ -26,6 +26,9 @@ terraform.rc
 secrets.tfvars
 secrets.tfvars.json
 
+# ── Worktrees holding the code each preview environment was built from ───────
+.worktrees/
+
 # ── LocalStack ───────────────────────────────────────────────────────────────
 volume/
 .localstack/
