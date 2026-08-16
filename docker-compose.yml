@@ -6,6 +6,7 @@ services:
       - "${LOCALSTACK_PORT:-4566}:4566"
     environment:
       DEBUG: ${DEBUG:-0}
+      DISABLE_CORS_CHECKS: 1
     volumes:
       - ./volume:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
