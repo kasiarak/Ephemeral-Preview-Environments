@@ -38,3 +38,8 @@ variable "public_port" {
   type    = number
   default = 4566
 }
+
+variable "memory_size" {
+  type    = number
+  default = 128
+}

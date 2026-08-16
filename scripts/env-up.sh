@@ -22,7 +22,10 @@ tf workspace select -or-create "$workspace" >/dev/null
 # at on GitHub. Falling through all three means building from the working tree,
 # which is what happens for environments with no pull request behind them.
 if [[ -z "$REF" ]]; then
-  REF="$(tf output -raw git_ref 2>/dev/null || true)"
+  stored="$(tf output -raw git_ref 2>/dev/null || true)"
+  if [[ "$stored" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+    REF="$stored"
+  fi
 fi
 
 if [[ -z "$REF" ]]; then
@@ -32,20 +35,7 @@ fi
 app_root=""
 
 if [[ -n "$REF" ]]; then
-  git fetch --quiet origin "$REF" 2>/dev/null || true
-
-  # Detached worktrees keep the environment independent of the branch checked
-  # out in the main working tree, so several environments can be built from
-  # different refs at the same time.
-  target="origin/$REF"
-  git rev-parse --verify --quiet "$target" >/dev/null || target="$REF"
-
-  if [[ -d "$worktree" ]]; then
-    git -C "$worktree" checkout --quiet --detach "$target"
-  else
-    git worktree add --quiet --detach "$worktree" "$target"
-  fi
-
+  worktree="$(./scripts/worktree.sh "$REF" "$workspace")"
   app_root="$worktree"
 
   if [[ "$COMMIT" == "unknown" ]]; then

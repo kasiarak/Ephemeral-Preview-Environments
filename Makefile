@@ -13,7 +13,12 @@ PREVIEW_DIR := terraform/envs/preview
 COMMIT ?= unknown
 TTL_HOURS ?= 24
 
-.PHONY: help up down logs health test-unit test smoke fmt validate bootstrap shared env-up env-down env-url env-logs env-list reap reap-force nuke
+define print_urls
+@echo "api:  $$(terraform -chdir=$(1) output -raw api_url)"
+@echo "site: http://$$(terraform -chdir=$(1) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)"
+endef
+
+.PHONY: help up down logs health test-unit test smoke fmt validate bootstrap shared env-up env-down env-url env-logs env-list dev-up dev-url dev-down prod-url prod-plan prod-apply reap reap-force nuke
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -86,8 +91,7 @@ env-down: ## Destroy the preview environment for PR=<n>
 env-url: ## Print the URLs of the preview environment for PR=<n>
 	@test -n "$(PR)" || { echo "usage: make env-url PR=<number>"; exit 1; }
 	@terraform -chdir=$(PREVIEW_DIR) workspace select pr-$(PR) >/dev/null
-	@echo "api:  $$(terraform -chdir=$(PREVIEW_DIR) output -raw api_url)"
-	@echo "site: http://$$(terraform -chdir=$(PREVIEW_DIR) output -raw site_bucket).s3-website.localhost.localstack.cloud:$(LOCALSTACK_PORT)"
+	$(call print_urls,$(PREVIEW_DIR))
 
 env-logs: ## Follow application logs of the environment for PR=<n>
 	@test -n "$(PR)" || { echo "usage: make env-logs PR=<number>"; exit 1; }
@@ -96,6 +100,28 @@ env-logs: ## Follow application logs of the environment for PR=<n>
 env-list: ## List live preview environments
 	@terraform -chdir=$(PREVIEW_DIR) workspace list \
 		| sed 's/^[* ] *//' | grep '^pr-' || echo "no preview environments"
+
+dev-up: ## Create or update the dev environment, tracking main by default
+	@ENV_NAME=dev ENV_DIR=terraform/envs/dev REF=$(or $(REF),main) \
+		AUTO_APPROVE=1 PUBLIC_PORT=$(LOCALSTACK_PORT) ./scripts/deploy.sh
+	$(call print_urls,terraform/envs/dev)
+
+dev-url: ## Print the URLs of the dev environment
+	$(call print_urls,terraform/envs/dev)
+
+prod-url: ## Print the URLs of the prod environment
+	$(call print_urls,terraform/envs/prod)
+
+dev-down: ## Destroy the dev environment
+	terraform -chdir=terraform/envs/dev destroy -auto-approve -input=false
+
+prod-plan: ## Show what would change in the prod environment [REF=<tag>]
+	@ENV_NAME=prod ENV_DIR=terraform/envs/prod REF=$(REF) COMMAND=plan \
+		PUBLIC_PORT=$(LOCALSTACK_PORT) ./scripts/deploy.sh
+
+prod-apply: ## Deploy REF=<tag> to prod after manual confirmation
+	@ENV_NAME=prod ENV_DIR=terraform/envs/prod REF=$(REF) \
+		PUBLIC_PORT=$(LOCALSTACK_PORT) ./scripts/deploy.sh
 
 reap: ## Show which preview environments are stale
 	@PREVIEW_DIR=$(PREVIEW_DIR) TTL_HOURS=$(TTL_HOURS) ./scripts/reap.sh
